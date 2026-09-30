@@ -3,7 +3,7 @@
 // ==========================================
 
 const TULUA_COORDS = [4.0847, -76.1953]; // [Lat, Lng]
-const RADIO_MAXIMO_KM = 100; // Perímetro estricto de 100 km
+const RADIO_MAXIMO_KM = 100;
 
 // Inicializar el mapa de Leaflet centrado en Tuluá
 const map = L.map('map', {
@@ -28,7 +28,6 @@ const circuloCobertura = L.circle(TULUA_COORDS, {
   radius: RADIO_MAXIMO_KM * 1000
 }).addTo(map);
 
-// Capa para mostrar la ruta real por carretera
 let routeLayer = null;
 
 
@@ -56,20 +55,22 @@ function actualizarCamposSegunServicio(servicio) {
   
   extrasContainer.innerHTML = '';
   extrasContainer.style.display = 'none';
-  grupoDestinoContainer.style.display = 'block'; // Visible por defecto
+  grupoDestinoContainer.style.display = 'block';
 
   if (servicio === 'consignacion') {
-    // REQUISITO: En consignación ocultamos destino y dejamos solo los 2 apartados pedidos
     grupoDestinoContainer.style.display = 'none'; 
     lblOrigen.textContent = "📍 Punto de Recogida (Barrio / Banco en Tuluá):";
     
     extrasContainer.style.display = 'block';
     extrasContainer.innerHTML = `
       <div class="input-group" style="margin-bottom: 0;">
-        <label>💵 Cantidad a Consignar (+ % Comisión baja):</label>
-        <input type="number" id="valorConsignacionInput" placeholder="Ej: 200000">
+        <label>💵 Cantidad a Consignar (Tarifa justa):</label>
+        <input type="number" id="valorConsignacionInput" placeholder="Ej: 150000">
       </div>
     `;
+  } else if (servicio === 'carrera') {
+    lblOrigen.textContent = "📍 ¿Dónde se recoge al pasajero?:";
+    lblDestino.textContent = "🏁 ¿Hacia dónde se dirige el pasajero?:";
   } else if (servicio === 'favor') {
     lblOrigen.textContent = "📍 ¿Dónde se compra o realiza el favor?:";
     lblDestino.textContent = "🏁 ¿A dónde se entrega?:";
@@ -105,17 +106,16 @@ window.abrirAuthModal = function(tipo) {
 
 
 // ==========================================
-// 4. MATRIZ REGIONAL Y ENRUTAMIENTO REAL POR CARRETERA
+// 4. MATRIZ REGIONAL Y CÁLCULO DE TARIFA ACCESIBLE
 // ==========================================
 
-// Coordenadas exactas y distancias viales reales aproximadas desde Tuluá (km por carretera)
 const destinosRegionales = {
   "buga": { km: 28, coords: [3.9008, -76.3045] },
   "andalucia": { km: 10, coords: [4.1667, -76.1833] },
   "bugalagrande": { km: 17, coords: [4.2250, -76.1264] },
   "san pedro": { km: 36, coords: [3.9833, -76.2333] },
   "zarzal": { km: 41, coords: [4.3931, -76.0681] },
-  "sevilla": { km: 53.5, coords: [4.2681, -75.9325] }, // Corregido a distancia vial real
+  "sevilla": { km: 53.5, coords: [4.2681, -75.9325] },
   "caicedonia": { km: 64, coords: [4.3333, -75.8500] },
   "la paila": { km: 46, coords: [4.3500, -76.1000] },
   "obando": { km: 70, coords: [4.4667, -75.7667] },
@@ -134,11 +134,10 @@ if (btnCalcular) {
     const origenVal = document.getElementById('origenInput').value.toLowerCase().trim();
     const destinoVal = document.getElementById('destinoInput').value.toLowerCase().trim();
     
-    let distanciaKm = 4.0; // Urbano por defecto en Tuluá
+    let distanciaKm = 3.0; // Distancia urbana promedio
     let coordsDestino = [4.07, -76.20];
     let destinoEncontrado = false;
 
-    // Si es consignación, el destino se asume local o en el punto indicado
     const textoBusqueda = servicioSeleccionado === 'consignacion' ? origenVal : destinoVal;
 
     for (let key in destinosRegionales) {
@@ -150,77 +149,78 @@ if (btnCalcular) {
       }
     }
 
-    // Validación estricta de perímetro (Máximo 100 km)
     if (distanciaKm > RADIO_MAXIMO_KM) {
-      alert(`⚠️ El destino excede el perímetro máximo de cobertura (${RADIO_MAXIMO_KM} km a la redonda desde Tuluá).`);
+      alert(`⚠️ El destino excede el perímetro máximo de cobertura (${RADIO_MAXIMO_KM} km).`);
       return;
     }
 
     if (!destinoEncontrado && servicioSeleccionado === 'intermunicipal') {
-      distanciaKm = 35; // Valor predeterminado si escribe un destino intermunicipal genérico
+      distanciaKm = 35;
     } else if (!destinoEncontrado && servicioSeleccionado !== 'intermunicipal' && servicioSeleccionado !== 'consignacion') {
-      distanciaKm = Math.min(Math.max((origenVal.length + destinoVal.length) % 6 + 2, 2.5), 10);
+      distanciaKm = Math.min(Math.max((origenVal.length + destinoVal.length) % 5 + 1.5, 1.5), 7.5);
     }
 
-    // Limpiar ruta anterior en el mapa
     if (routeLayer) {
       map.removeLayer(routeLayer);
     }
 
-    // Intentar obtener la ruta vial real usando OSRM (Servicio público gratuito de enrutamiento)
     try {
       const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${TULUA_COORDS[1]},${TULUA_COORDS[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`;
-      
       const response = await fetch(urlOSRM);
       const data = await response.json();
 
       if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const rutaReal = data.routes[0];
-        distanciaKm = rutaReal.distance / 1000; // Convertir metros a kilómetros reales por carretera
+        distanciaKm = servicioSeleccionado === 'consignacion' ? 2.5 : (rutaReal.distance / 1000);
         
-        // Dibujar la ruta real siguiendo las carreteras (no línea recta)
         routeLayer = L.geoJSON(rutaReal.geometry, {
-          style: {
-            color: '#00ff88',
-            weight: 5,
-            opacity: 0.8
-          }
+          style: { color: '#00ff88', weight: 5, opacity: 0.8 }
         }).addTo(map);
 
         map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
       } else {
-        throw new Error("No se pudo calcular la ruta vial");
+        throw new Error();
       }
     } catch (error) {
-      console.warn("Usando respaldo de coordenadas directas debido a error de red/OSRM:", error);
-      // Fallback a línea si falla el servicio de red
       routeLayer = L.polyline([TULUA_COORDS, coordsDestino], {
-        color: '#00ff88',
-        weight: 4,
-        dashArray: '6, 6'
+        color: '#00ff88', weight: 4, dashArray: '6, 6'
       }).addTo(map);
       map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
     }
 
-    // Tarifas
-    let tarifaBase = servicioSeleccionado === 'intermunicipal' ? 16000 : 5000;
-    let costoPorKm = servicioSeleccionado === 'intermunicipal' ? 1100 : 1800;
-    
-    let precioCalculado = tarifaBase + (distanciaKm * costoPorKm);
+    // ==========================================
+    // CÁLCULO DE TARIFA ASEQUIBLE Y REAL
+    // ==========================================
+    let precioCalculado = 0;
 
-    // Comisión pequeña para consignaciones
     if (servicioSeleccionado === 'consignacion') {
+      const domicilioBase = 4000;
       const inputValorConsig = document.getElementById('valorConsignacionInput');
       const montoConsignar = inputValorConsig ? parseFloat(inputValorConsig.value) || 0 : 0;
+      const comisionBaja = 800 + (montoConsignar * 0.002); // Súper accesible
+      precioCalculado = domicilioBase + comisionBaja;
+      distanciaKm = 0;
+    } else if (servicioSeleccionado === 'intermunicipal') {
+      // Tarifa base regional ajustable según consumo/distancia vial
+      const tarifaBaseInter = 15000;
+      const costoKmInter = 1000; // Estimado base por kilómetro en carretera
+      precioCalculado = tarifaBaseInter + (distanciaKm * costoKmInter);
+    } else {
+      // Tarifa Urbana Escalonada (Comida, Paquetes, Favor, Carreras)
+      // Base $4.000 para trayectos cercanos, escalando hasta $8.000 - $9.000 de punta a punta en Tuluá
+      const baseUrbana = 4000;
+      const adicionalKm = distanciaKm * 900; 
+      precioCalculado = baseUrbana + adicionalKm;
       
-      const comisionBaja = montoConsignar * 0.015; // 1.5% de comisión baja
-      precioCalculado += comisionBaja;
+      // Aplicar tope máximo razonable para la zona urbana de Tuluá (máximo $9,000 punta a punta)
+      if (precioCalculado > 9000) {
+        precioCalculado = 9000;
+      }
     }
 
     precioCalculado = Math.round(precioCalculado);
 
-    // Mostrar resultados
-    distanciaTxt.textContent = distanciaKm.toFixed(1);
+    distanciaTxt.textContent = distanciaKm > 0 ? distanciaKm.toFixed(1) : "Local";
     precioTxt.textContent = precioCalculado.toLocaleString('es-CO');
     resultBox.style.display = 'block';
     resultBox.scrollIntoView({ behavior: 'smooth' });
