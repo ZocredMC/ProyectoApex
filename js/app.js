@@ -1,112 +1,25 @@
 // ==========================================
 // 1. CONFIGURACIÓN INICIAL Y MAPA
 // ==========================================
+const TULUA_COORDS = [4.0847, -76.1953]; // Coordenadas centrales de Tuluá
 
-const TULUA_COORDS = [4.0847, -76.1953]; // [Lat, Lng] de Tuluá (Base Central)
-const RADIO_INTERMUNICIPAL_KM = 100; // Límite para intermunicipales
-
-// Inicializar el mapa de Leaflet centrado en Tuluá
 const map = L.map('map', {
   zoomControl: false
 }).setView(TULUA_COORDS, 13);
 
-// Capa de mapa limpia con OpenStreetMap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors',
   maxZoom: 18
 }).addTo(map);
 
-// Marcador principal (Origen)
 const markerOrigen = L.marker(TULUA_COORDS, { draggable: true }).addTo(map);
 markerOrigen.bindPopup("<b>📍 Tuluá (Base Central)</b>").openPopup();
 
 let routeLayer = null;
 
-
 // ==========================================
-// 2. INTERACTIVIDAD Y CAMPOS DINÁMICOS
+// 2. DIRECTORIO OFICIAL DE BARRIOS Y DESTINOS
 // ==========================================
-const serviceCards = document.querySelectorAll('.service-card');
-let servicioSeleccionado = 'comida';
-
-serviceCards.forEach(card => {
-  card.addEventListener('click', () => {
-    serviceCards.forEach(c => c.classList.remove('active'));
-    card.classList.add('active');
-    
-    servicioSeleccionado = card.getAttribute('data-service');
-    actualizarCamposSegunServicio(servicioSeleccionado);
-  });
-});
-
-function actualizarCamposSegunServicio(servicio) {
-  const lblOrigen = document.getElementById('lblOrigen');
-  const lblDestino = document.getElementById('lblDestino');
-  const grupoDestinoContainer = document.getElementById('grupoDestinoContainer');
-  const extrasContainer = document.getElementById('extrasServicioContainer');
-  
-  extrasContainer.innerHTML = '';
-  extrasContainer.style.display = 'none';
-  grupoDestinoContainer.style.display = 'block';
-
-  if (servicio === 'intermunicipal') {
-    map.setView(TULUA_COORDS, 10);
-  } else {
-    map.setView(TULUA_COORDS, 13);
-  }
-
-  if (servicio === 'consignacion') {
-    grupoDestinoContainer.style.display = 'none'; 
-    lblOrigen.textContent = "📍 Barrio o Corregimiento de Recogida en Tuluá:";
-    
-    extrasContainer.style.display = 'block';
-    extrasContainer.innerHTML = `
-      <div class="input-group" style="margin-bottom: 0;">
-        <label>💵 Cantidad a Consignar (Tarifa justa):</label>
-        <input type="number" id="valorConsignacionInput" placeholder="Ej: 150000">
-      </div>
-    `;
-  } else if (servicio === 'carrera') {
-    lblOrigen.textContent = "📍 Barrio o Corregimiento de recogida:";
-    lblDestino.textContent = "🏁 Barrio o Corregimiento de destino:";
-  } else if (servicio === 'favor') {
-    lblOrigen.textContent = "📍 Barrio o Corregimiento donde se realiza el favor:";
-    lblDestino.textContent = "🏁 Barrio o Corregimiento de entrega:";
-  } else if (servicio === 'intermunicipal') {
-    lblOrigen.textContent = "📍 Origen (Tuluá o Municipio base):";
-    lblDestino.textContent = "🏁 Destino (Municipio dentro de los 100km):";
-  } else {
-    lblOrigen.textContent = "📍 Barrio o Corregimiento de Recogida:";
-    lblDestino.textContent = "🏁 Barrio o Corregimiento de Entrega:";
-  }
-}
-
-
-// ==========================================
-// 3. CONTROL DE MODALES
-// ==========================================
-const btnHacerPedido = document.getElementById('btnHacerPedido');
-const modalPedido = document.getElementById('modalPedido');
-
-if (btnHacerPedido) {
-  btnHacerPedido.addEventListener('click', () => {
-    modalPedido.style.display = 'flex';
-  });
-}
-
-window.cerrarModal = function(modalId) {
-  document.getElementById(modalId).style.display = 'none';
-};
-
-window.abrirAuthModal = function(tipo) {
-  alert(`Abriendo modal de ${tipo === 'login' ? 'Inicio de Sesión' : 'Registro'}`);
-};
-
-
-// ==========================================
-// 4. DIRECTORIO OFICIAL DE BARRIOS Y CORREGIMIENTOS DE TULUÁ
-// ==========================================
-
 const directorioTulua = {
   // Comuna 1
   "lomitas": [4.0890, -76.1980],
@@ -213,7 +126,7 @@ const directorioTulua = {
   "el bosquesito": [4.0520, -76.1760],
   "diablos rojos": [4.0500, -76.1740],
 
-  // Corregimientos principales
+  // Corregimientos
   "aguaclara": [4.1200, -76.2500],
   "barragan": [4.1500, -76.0500],
   "bocas de tulua": [4.1300, -76.1200],
@@ -254,15 +167,96 @@ const destinosRegionales = {
   "pereira": { km: 99, coords: [4.8133, -75.6961] }
 };
 
-// Función auxiliar para normalizar texto (quita tildes y pasa a minúsculas)
+// ==========================================
+// 3. UTILIDADES Y NORMALIZACIÓN
+// ==========================================
 function normalizarTexto(texto) {
   if (!texto) return "";
   return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
+// ==========================================
+// 4. INTERACTIVIDAD DE MENÚS Y SERVICIOS
+// ==========================================
+const serviceCards = document.querySelectorAll('.service-card');
+let servicioSeleccionado = 'comida';
+
+serviceCards.forEach(card => {
+  card.addEventListener('click', () => {
+    serviceCards.forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    
+    servicioSeleccionado = card.getAttribute('data-service');
+    actualizarCamposSegunServicio(servicioSeleccionado);
+  });
+});
+
+function actualizarCamposSegunServicio(servicio) {
+  const lblOrigen = document.getElementById('lblOrigen');
+  const lblDestino = document.getElementById('lblDestino');
+  const grupoDestinoContainer = document.getElementById('grupoDestinoContainer');
+  const extrasContainer = document.getElementById('extrasServicioContainer');
+  
+  if (!extrasContainer || !grupoDestinoContainer) return;
+
+  extrasContainer.innerHTML = '';
+  extrasContainer.style.display = 'none';
+  grupoDestinoContainer.style.display = 'block';
+
+  if (servicio === 'intermunicipal') {
+    map.setView(TULUA_COORDS, 10);
+  } else {
+    map.setView(TULUA_COORDS, 13);
+  }
+
+  if (servicio === 'consignacion') {
+    grupoDestinoContainer.style.display = 'none'; 
+    lblOrigen.textContent = "📍 Barrio o Corregimiento de Recogida en Tuluá:";
+    extrasContainer.style.display = 'block';
+    extrasContainer.innerHTML = `
+      <div class="input-group" style="margin-bottom: 0;">
+        <label>💵 Cantidad a Consignar:</label>
+        <input type="number" id="valorConsignacionInput" placeholder="Ej: 150000">
+      </div>
+    `;
+  } else if (servicio === 'carrera') {
+    lblOrigen.textContent = "📍 Barrio o Corregimiento de recogida:";
+    lblDestino.textContent = "🏁 Barrio o Corregimiento de destino:";
+  } else if (servicio === 'favor') {
+    lblOrigen.textContent = "📍 Barrio o Corregimiento donde se realiza el favor:";
+    lblDestino.textContent = "🏁 Barrio o Corregimiento de entrega:";
+  } else if (servicio === 'intermunicipal') {
+    lblOrigen.textContent = "📍 Origen (Tuluá o Municipio base):";
+    lblDestino.textContent = "🏁 Destino (Municipio regional):";
+  } else {
+    lblOrigen.textContent = "📍 Barrio o Corregimiento de Recogida:";
+    lblDestino.textContent = "🏁 Barrio o Corregimiento de Entrega:";
+  }
+}
 
 // ==========================================
-// 5. CÁLCULO DE RUTA Y TARIFA
+// 5. CONTROL DE MODALES
+// ==========================================
+const btnHacerPedido = document.getElementById('btnHacerPedido');
+const modalPedido = document.getElementById('modalPedido');
+
+if (btnHacerPedido && modalPedido) {
+  btnHacerPedido.addEventListener('click', () => {
+    modalPedido.style.display = 'flex';
+  });
+}
+
+window.cerrarModal = function(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.style.display = 'none';
+};
+
+window.abrirAuthModal = function(tipo) {
+  alert(`Abriendo modal de ${tipo === 'login' ? 'Inicio de Sesión' : 'Registro'}`);
+};
+
+// ==========================================
+// 6. CÁLCULO DE RUTA Y TARIFA (VALIDADO)
 // ==========================================
 const btnCalcular = document.getElementById('btnCalcular');
 const resultBox = document.getElementById('resultBox');
@@ -275,8 +269,8 @@ if (btnCalcular) {
     const inputDestino = document.getElementById('destinoInput');
     const inputValorConsig = document.getElementById('valorConsignacionInput');
     
-    const origenTexto = inputOrigen.value.trim();
-    const destinoTexto = inputDestino.value.trim();
+    const origenTexto = inputOrigen ? inputOrigen.value.trim() : '';
+    const destinoTexto = inputDestino ? inputDestino.value.trim() : '';
     const montoConsignar = inputValorConsig ? parseFloat(inputValorConsig.value) || 0 : 0;
 
     let distanciaKm = 3.0;
@@ -286,7 +280,7 @@ if (btnCalcular) {
 
     const textoVerificacionDestino = servicioSeleccionado === 'consignacion' ? origenTexto : destinoTexto;
 
-    // Validar Origen contra el Diccionario (ignorando tildes y permitiendo coincidencia flexible)
+    // Validación de Origen en el diccionario
     let origenValido = false;
     const origenNorm = normalizarTexto(origenTexto);
     for (let zona in directorioTulua) {
@@ -303,7 +297,7 @@ if (btnCalcular) {
       return;
     }
 
-    // Validar Destino según el servicio
+    // Validación de Destino según servicio
     if (servicioSeleccionado === 'intermunicipal') {
       const destinoNorm = normalizarTexto(textoVerificacionDestino);
       for (let key in destinosRegionales) {
@@ -346,7 +340,7 @@ if (btnCalcular) {
       map.removeLayer(routeLayer);
     }
 
-    // Petición OSRM para trazar ruta real
+    // Trazar ruta OSRM con coordenadas limpias
     try {
       const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`;
       const response = await fetch(urlOSRM);
@@ -374,9 +368,7 @@ if (btnCalcular) {
       map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
     }
 
-    // ==========================================
-    // CÁLCULO DE TARIFA
-    // ==========================================
+    // Cálculo matemático de la tarifa
     let precioCalculado = 0;
 
     if (servicioSeleccionado === 'consignacion') {
@@ -402,15 +394,16 @@ if (btnCalcular) {
 
     precioCalculado = Math.round(precioCalculado);
 
-    // Mostrar resultados
-    distanciaTxt.textContent = distanciaKm > 0 ? distanciaKm.toFixed(1) : "Local";
-    precioTxt.textContent = precioCalculado.toLocaleString('es-CO');
-    resultBox.style.display = 'block';
-    resultBox.scrollIntoView({ behavior: 'smooth' });
+    if (distanciaTxt) distanciaTxt.textContent = distanciaKm > 0 ? distanciaKm.toFixed(1) : "Local";
+    if (precioTxt) precioTxt.textContent = precioCalculado.toLocaleString('es-CO');
+    if (resultBox) {
+      resultBox.style.display = 'block';
+      resultBox.scrollIntoView({ behavior: 'smooth' });
+    }
 
-    // Reinicio seguro de campos
-    inputOrigen.value = '';
-    inputDestino.value = '';
+    // Limpieza de inputs
+    if (inputOrigen) inputOrigen.value = '';
+    if (inputDestino) inputDestino.value = '';
     if (inputValorConsig) inputValorConsig.value = '';
   });
-                               }
+}
