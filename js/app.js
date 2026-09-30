@@ -1,14 +1,14 @@
 // ==========================================
-// 1. CONFIGURACIÓN INICIAL Y MAPA (TULUÁ Y REGIÓN - 100 KM)
+// 1. CONFIGURACIÓN INICIAL Y MAPA
 // ==========================================
 
-const TULUA_COORDS = [4.0847, -76.1953]; // [Lat, Lng]
-const RADIO_MAXIMO_KM = 100;
+const TULUA_COORDS = [4.0847, -76.1953]; // [Lat, Lng] de Tuluá (Base Central)
+const RADIO_INTERMUNICIPAL_KM = 100; // Límite para intermunicipales
 
 // Inicializar el mapa de Leaflet centrado en Tuluá
 const map = L.map('map', {
   zoomControl: false
-}).setView(TULUA_COORDS, 10);
+}).setView(TULUA_COORDS, 13);
 
 // Capa de mapa limpia con OpenStreetMap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -20,13 +20,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const markerOrigen = L.marker(TULUA_COORDS, { draggable: true }).addTo(map);
 markerOrigen.bindPopup("<b>📍 Tuluá (Base Central)</b>").openPopup();
 
-const circuloCobertura = L.circle(TULUA_COORDS, {
-  color: '#00e5ff',
-  fillColor: '#00e5ff',
-  fillOpacity: 0.03,
-  radius: RADIO_MAXIMO_KM * 1000
-}).addTo(map);
-
+// Capa para mostrar la ruta en el mapa
 let routeLayer = null;
 
 
@@ -56,6 +50,13 @@ function actualizarCamposSegunServicio(servicio) {
   extrasContainer.style.display = 'none';
   grupoDestinoContainer.style.display = 'block';
 
+  // Ajustar zoom del mapa según el servicio
+  if (servicio === 'intermunicipal') {
+    map.setView(TULUA_COORDS, 10);
+  } else {
+    map.setView(TULUA_COORDS, 13);
+  }
+
   if (servicio === 'consignacion') {
     grupoDestinoContainer.style.display = 'none'; 
     lblOrigen.textContent = "📍 Punto de Recogida (Barrio / Banco en Tuluá):";
@@ -68,11 +69,11 @@ function actualizarCamposSegunServicio(servicio) {
       </div>
     `;
   } else if (servicio === 'carrera') {
-    lblOrigen.textContent = "📍 ¿Dónde se recoge al pasajero?:";
-    lblDestino.textContent = "🏁 ¿Hacia dónde se dirige?:";
+    lblOrigen.textContent = "📍 ¿Dónde se recoge al pasajero en Tuluá?:";
+    lblDestino.textContent = "🏁 ¿Hacia dónde se dirige en Tuluá?:";
   } else if (servicio === 'favor') {
-    lblOrigen.textContent = "📍 ¿Dónde se compra o realiza el favor?:";
-    lblDestino.textContent = "🏁 ¿A dónde se entrega?:";
+    lblOrigen.textContent = "📍 ¿Dónde se compra o realiza el favor en Tuluá?:";
+    lblDestino.textContent = "🏁 ¿A dónde se entrega en Tuluá?:";
   } else if (servicio === 'intermunicipal') {
     lblOrigen.textContent = "📍 Origen (Tuluá o Municipio base):";
     lblDestino.textContent = "🏁 Destino (Municipio dentro de los 100km):";
@@ -105,7 +106,7 @@ window.abrirAuthModal = function(tipo) {
 
 
 // ==========================================
-// 4. MATRIZ REGIONAL Y CÁLCULO DE TARIFA
+// 4. MATRIZ REGIONAL Y CÁLCULO DE TARIFA ESTABLE
 // ==========================================
 
 const destinosRegionales = {
@@ -130,15 +131,19 @@ const precioTxt = document.getElementById('precioTxt');
 
 if (btnCalcular) {
   btnCalcular.addEventListener('click', async () => {
-    const origenVal = document.getElementById('origenInput').value.toLowerCase().trim();
-    const destinoVal = document.getElementById('destinoInput').value.toLowerCase().trim();
+    const inputOrigen = document.getElementById('origenInput');
+    const inputDestino = document.getElementById('destinoInput');
+    
+    const origenVal = inputOrigen.value.toLowerCase().trim();
+    const destinoVal = inputDestino.value.toLowerCase().trim();
     
     let distanciaKm = 3.0;
-    let coordsDestino = [4.07, -76.20];
+    let coordsDestino = [4.09, -76.21];
     let destinoEncontrado = false;
 
     const textoBusqueda = servicioSeleccionado === 'consignacion' ? origenVal : destinoVal;
 
+    // Comprobar si el texto ingresado coincide con algún municipio regional
     for (let key in destinosRegionales) {
       if (textoBusqueda.includes(key) || origenVal.includes(key)) {
         distanciaKm = destinosRegionales[key].km;
@@ -148,21 +153,38 @@ if (btnCalcular) {
       }
     }
 
-    if (distanciaKm > RADIO_MAXIMO_KM) {
-      alert(`⚠️ El destino excede el perímetro máximo de cobertura (${RADIO_MAXIMO_KM} km).`);
+    // RESTRICCIÓN: Si NO es intermunicipal, bloquear si intentan salir de Tuluá hacia otro municipio
+    if (servicioSeleccionado !== 'intermunicipal' && destinoEncontrado) {
+      alert(`⚠️ Este servicio (${servicioSeleccionado.toUpperCase()}) opera ÚNICAMENTE dentro de Tuluá. Para viajes regionales, usa "Envíos Intermunicipales".`);
       return;
     }
 
-    if (!destinoEncontrado && servicioSeleccionado === 'intermunicipal') {
-      distanciaKm = 35;
-    } else if (!destinoEncontrado && servicioSeleccionado !== 'intermunicipal' && servicioSeleccionado !== 'consignacion') {
-      distanciaKm = Math.min(Math.max((origenVal.length + destinoVal.length) % 5 + 1.5, 1.5), 7.5);
+    // Validación límite intermunicipal
+    if (servicioSeleccionado === 'intermunicipal' && distanciaKm > RADIO_INTERMUNICIPAL_KM) {
+      alert(`⚠️ El destino excede el perímetro máximo de cobertura regional (${RADIO_INTERMUNICIPAL_KM} km).`);
+      return;
     }
 
+    // Si es intermunicipal sin coincidencia exacta
+    if (!destinoEncontrado && servicioSeleccionado === 'intermunicipal') {
+      distanciaKm = 35;
+      coordsDestino = [4.1667, -76.1833]; // Andalucía por defecto
+    } else if (!destinoEncontrado) {
+      // Cálculo urbano dentro de Tuluá dinámico según los textos ingresados
+      const variacionLat = (origenVal.length % 5) * 0.007 + 0.008;
+      const variacionLng = (destinoVal.length % 5) * 0.007 + 0.008;
+      coordsDestino = [TULUA_COORDS[0] + variacionLat, TULUA_COORDS[1] - variacionLng];
+      
+      distanciaKm = Math.min(Math.max((origenVal.length + destinoVal.length) % 5 + 1.5, 1.5), 7.0);
+      if (servicioSeleccionado === 'consignacion') distanciaKm = 2.5;
+    }
+
+    // Limpiar capa de ruta anterior en el mapa
     if (routeLayer) {
       map.removeLayer(routeLayer);
     }
 
+    // Petición OSRM para trazar ruta real en el mapa
     try {
       const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${TULUA_COORDS[1]},${TULUA_COORDS[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`;
       const response = await fetch(urlOSRM);
@@ -170,7 +192,10 @@ if (btnCalcular) {
 
       if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const rutaReal = data.routes[0];
-        distanciaKm = servicioSeleccionado === 'consignacion' ? 2.5 : (rutaReal.distance / 1000);
+        
+        if (servicioSeleccionado !== 'consignacion' && !destinoEncontrado) {
+          distanciaKm = Math.max(rutaReal.distance / 1000, 1.5);
+        }
         
         routeLayer = L.geoJSON(rutaReal.geometry, {
           style: { color: '#00ff88', weight: 5, opacity: 0.8 }
@@ -188,7 +213,7 @@ if (btnCalcular) {
     }
 
     // ==========================================
-    // CÁLCULO DE TARIFA SEGÚN TIPO DE SERVICIO
+    // CÁLCULO DE TARIFA
     // ==========================================
     let precioCalculado = 0;
 
@@ -200,35 +225,29 @@ if (btnCalcular) {
       precioCalculado = domicilioBase + comisionBaja;
       distanciaKm = 0;
     } else if (servicioSeleccionado === 'carrera') {
-      // REQUISITO CARRERAS: Mínima $4.000, punto más retirado $5.000 - $6.000, directo sin esperas
       const baseCarrera = 4000;
       const adicionalDistancia = distanciaKm * 700;
       precioCalculado = baseCarrera + adicionalDistancia;
-      
-      // Tope máximo lógico en zona urbana para carreras (entre $6,000 y $7,000)
-      if (precioCalculado > 6500) {
-        precioCalculado = 6500;
-      }
+      if (precioCalculado > 6500) precioCalculado = 6500;
     } else if (servicioSeleccionado === 'intermunicipal') {
       const tarifaBaseInter = 15000;
       const costoKmInter = 1000;
       precioCalculado = tarifaBaseInter + (distanciaKm * costoKmInter);
     } else {
-      // Domicilios normales (Comida, Paquetes, Favor)
       const baseUrbana = 4000;
       const adicionalKm = distanciaKm * 900; 
       precioCalculado = baseUrbana + adicionalKm;
-      
-      if (precioCalculado > 9000) {
-        precioCalculado = 9000;
-      }
+      if (precioCalculado > 9000) precioCalculado = 9000;
     }
 
     precioCalculado = Math.round(precioCalculado);
 
+    // Mostrar resultados y deslizar vista al cuadro de resultado
     distanciaTxt.textContent = distanciaKm > 0 ? distanciaKm.toFixed(1) : "Local";
     precioTxt.textContent = precioCalculado.toLocaleString('es-CO');
     resultBox.style.display = 'block';
     resultBox.scrollIntoView({ behavior: 'smooth' });
+    
+    // (Nota: Ya no vaciamos los inputs automáticamente para evitar que se desactive o bloquee la interfaz al reintentar).
   });
 }
