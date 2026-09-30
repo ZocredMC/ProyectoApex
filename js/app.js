@@ -213,7 +213,7 @@ const directorioTulua = {
   "el bosquesito": [4.0520, -76.1760],
   "diablos rojos": [4.0500, -76.1740],
 
-  // Corregimientos principales incluidos
+  // Corregimientos principales
   "aguaclara": [4.1200, -76.2500],
   "barragan": [4.1500, -76.0500],
   "bocas de tulua": [4.1300, -76.1200],
@@ -254,6 +254,12 @@ const destinosRegionales = {
   "pereira": { km: 99, coords: [4.8133, -75.6961] }
 };
 
+// Función auxiliar para normalizar texto (quita tildes y pasa a minúsculas)
+function normalizarTexto(texto) {
+  if (!texto) return "";
+  return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
 const btnCalcular = document.getElementById('btnCalcular');
 const resultBox = document.getElementById('resultBox');
 const distanciaTxt = document.getElementById('distanciaTxt');
@@ -265,8 +271,9 @@ if (btnCalcular) {
     const inputDestino = document.getElementById('destinoInput');
     const inputValorConsig = document.getElementById('valorConsignacionInput');
     
-    const origenVal = inputOrigen.value.toLowerCase().trim();
-    const destinoVal = inputDestino.value.toLowerCase().trim();
+    // Normalizar entradas del usuario para evitar errores por tildes o espacios
+    const origenVal = normalizarTexto(inputOrigen.value);
+    const destinoVal = normalizarTexto(inputDestino.value);
     const montoConsignar = inputValorConsig ? parseFloat(inputValorConsig.value) || 0 : 0;
 
     let distanciaKm = 3.0;
@@ -276,17 +283,19 @@ if (btnCalcular) {
 
     const textoBusqueda = servicioSeleccionado === 'consignacion' ? origenVal : destinoVal;
 
-    // Buscar coincidencia en el directorio comunal oficial de Tuluá para el Origen
+    // Búsqueda inteligente flexible para el Origen en Tuluá
     for (let zona in directorioTulua) {
-      if (origenVal.includes(zona)) {
+      const zonaNorm = normalizarTexto(zona);
+      if (origenVal.includes(zonaNorm) || zonaNorm.includes(origenVal)) {
         coordsOrigen = directorioTulua[zona];
         break;
       }
     }
 
-    // Buscar coincidencia en el directorio comunal oficial de Tuluá para el Destino
+    // Búsqueda inteligente flexible para el Destino en Tuluá
     for (let zona in directorioTulua) {
-      if (textoBusqueda.includes(zona)) {
+      const zonaNorm = normalizarTexto(zona);
+      if (textoBusqueda.includes(zonaNorm) || zonaNorm.includes(textoBusqueda)) {
         coordsDestino = directorioTulua[zona];
         break;
       }
@@ -294,7 +303,8 @@ if (btnCalcular) {
 
     // Comprobar si se seleccionó un municipio regional (solo para intermunicipales)
     for (let key in destinosRegionales) {
-      if (textoBusqueda.includes(key) || origenVal.includes(key)) {
+      const keyNorm = normalizarTexto(key);
+      if (textoBusqueda.includes(keyNorm) || origenVal.includes(keyNorm)) {
         distanciaKm = destinosRegionales[key].km;
         coordsDestino = destinosRegionales[key].coords;
         destinoEncontrado = true;
@@ -395,4 +405,4 @@ if (btnCalcular) {
     inputDestino.value = '';
     if (inputValorConsig) inputValorConsig.value = '';
   });
-}
+  }
