@@ -1,142 +1,263 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plataforma de Domicilios - Tuluá</title>
-  
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Forzamos la versión con ?v=99 para que el celular no cargue caché viejo -->
-  <link rel="stylesheet" href="styles.css?v=99" />
-</head>
-<body>
+/* ==========================================
+   VARIABLES Y CONFIGURACIÓN BASE (MOBILE FIRST APP)
+   ========================================== */
+:root {
+  --bg-dark: #030712;
+  --panel-bg: rgba(15, 23, 42, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-border-glow: rgba(0, 255, 136, 0.35);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary: #00ff88;
+  --primary-hover: #00cc6a;
+  --accent: #00e5ff;
+  --danger: #ff5555;
+  --warning: #ffcc00;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
 
-  <!-- HEADER MÓVIL DE ALTA GAMA -->
-  <header>
-    <div class="brand">
-      <h1 id="tituloAppLogo">⚡ Tu Plataforma</h1>
-      <p>Logística y Domicilios</p>
-    </div>
-    <div class="auth-buttons">
-      <div id="guestButtons">
-        <button class="btn btn-secondary" onclick="abrirAuthModal('login')">Ingresar</button>
-        <button class="btn" onclick="abrirAuthModal('register')">Registro</button>
-      </div>
-      <div id="userBadge" style="display: none;">
-        <span id="userNameTxt" style="font-weight: 600; font-size: 0.8rem;">👋 Hola</span> | 
-        <button id="btnMisPedidosCliente" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.7rem;">📋 Pedidos</button> | 
-        <a href="#" id="btnCerrarSesion" style="color: #ff5555; text-decoration: none; font-size: 0.75rem; font-weight: 600;">Salir</a>
-      </div>
-    </div>
-  </header>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
 
-  <!-- PANEL CLIENTE -->
-  <div class="container" id="panelCliente">
-    <label style="display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">✨ Selecciona el Tipo de Servicio:</label>
-    
-    <!-- Selector Moderno por Tarjetas Táctiles -->
-    <div class="services-grid" id="servicesGrid">
-      <div class="service-card active" data-service="comida">
-        <span>🍔</span>
-        <h4>Comida</h4>
-      </div>
-      <div class="service-card" data-service="paquete">
-        <span>📦</span>
-        <h4>Paquetes</h4>
-      </div>
-      <div class="service-card" data-service="consignacion">
-        <span>💳</span>
-        <h4>Consignación</h4>
-      </div>
-      <div class="service-card" data-service="favor">
-        <span>🛒</span>
-        <h4>El Favor</h4>
-      </div>
-      <div class="service-card service-card-full" data-service="intermunicipal">
-        <span>🚗</span>
-        <h4>Envíos Intermunicipales / Rurales</h4>
-      </div>
-    </div>
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-dark);
+  /* Fondo nocturno con gradiente profundo y malla de luz neón sutil */
+  background-image: 
+    radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0b0f19 50%, #020617 100%),
+    radial-gradient(rgba(0, 255, 136, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 16px 16px;
+  background-attachment: fixed;
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
 
-    <!-- CONTENEDOR DINÁMICO DE CAMPOS -->
-    <div id="seccionCamposDinamicos" style="background: rgba(2, 6, 23, 0.4); padding: 10px; border-radius: 10px; border: 1px solid var(--panel-border); margin-bottom: 12px;">
-      <div class="input-group">
-        <label id="lblOrigen">📍 Origen (Recogida en Tuluá):</label>
-        <input type="text" id="origenInput" placeholder="Ej: Centro, San Luis, Salesiano">
-      </div>
+/* ==========================================
+   HEADER MÓVIL FIJO
+   ========================================== */
+header {
+  background: rgba(3, 7, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--panel-border);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
 
-      <div class="input-group" id="grupoDestinoContainer">
-        <label id="lblDestino">🏁 Destino (Entrega en Tuluá):</label>
-        <input type="text" id="destinoInput" placeholder="Ej: Progresar, Victoria, El Príncipe">
-      </div>
+.brand h1 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 20%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
 
-      <div id="extrasServicioContainer" style="display: none; margin-top: 8px;"></div>
-    </div>
+.brand p {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
 
-    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-      <button class="btn" id="btnCalcular" style="flex: 1; font-size: 0.8rem;">🔍 Calcular Tarifa</button>
-      <button class="btn btn-secondary" id="btnCotizacionManual" style="flex: 1; font-size: 0.8rem;">📍 Cotizar Manual</button>
-    </div>
+/* ==========================================
+   BOTONES TÁCTILES
+   ========================================== */
+.auth-buttons button, .btn {
+  background: linear-gradient(135deg, var(--primary) 0%, #00b359 100%);
+  color: #030712;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.25);
+  font-size: 0.75rem;
+}
 
-    <!-- MAPA INTERACTIVO -->
-    <div id="map"></div>
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--panel-border) !important;
+  box-shadow: none !important;
+}
 
-    <div class="result-box" id="resultBox" style="display: none;">
-      <p style="font-size: 0.75rem; color: var(--text-muted);">Distancia estimada: <span id="distanciaTxt" style="color: #fff; font-weight: bold;">0</span> km</p>
-      <h3>Tarifa: $<span id="precioTxt">0</span> COP</h3>
-      <button class="btn btn-whatsapp" id="btnHacerPedido" style="width: 100%;">📦 Confirmar y Solicitar</button>
-    </div>
-  </div>
+.btn-whatsapp {
+  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3) !important;
+}
 
-  <!-- PANEL DOMICILIARIO -->
-  <div class="container" id="panelDomiciliario" style="display: none;">
-    <h2>🛵 Panel de Domiciliarios</h2>
-    <div style="background: rgba(2, 6, 23, 0.6); padding: 10px; border-radius: 10px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <span style="font-size: 0.7rem; color: var(--text-muted);">Estado: </span><br>
-        <strong id="txtEstadoServicio" style="color: var(--danger); font-size: 0.85rem;">Fuera de Servicio</strong>
-      </div>
-      <button id="btnToggleServicio" class="btn" style="padding: 6px 10px; font-size: 0.7rem;">🟢 Activarse</button>
-    </div>
-    <h3 style="color: var(--warning); font-size: 0.8rem; margin-bottom: 6px;">🚨 Bolsa de Pedidos</h3>
-    <div id="listaPedidosPendientes"><p style="color: var(--text-muted); font-size: 0.8rem;">Buscando...</p></div>
-  </div>
+/* ==========================================
+   CONTENEDOR PRINCIPAL OPTIMIZADO PARA CELULAR
+   ========================================== */
+.container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  background: transparent; /* Adiós al cajón gris plano, ahora fluye con el fondo */
+  border: none;
+  border-radius: 0;
+  padding: 12px;
+  box-shadow: none;
+}
 
-  <!-- PANEL ADMIN -->
-  <div class="container" id="panelAdmin" style="display: none;">
-    <h2>👑 Dashboard Admin</h2>
-    <div style="background: rgba(2, 6, 23, 0.4); padding: 10px; border-radius: 10px; margin: 12px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: center;">
-      <div>
-        <span style="font-size: 0.6rem; color: var(--text-muted);">VENTAS HOY</span>
-        <p style="font-size: 0.9rem; font-weight: bold; color: var(--primary);">$<span id="adminTotalVentas">0</span></p>
-      </div>
-      <div>
-        <span style="font-size: 0.6rem; color: var(--text-muted);">TOTAL PEDIDOS</span>
-        <p style="font-size: 0.9rem; font-weight: bold; color: var(--accent);"><span id="adminTotalPedidos">0</span></p>
-      </div>
-    </div>
-    <div id="listaEstadoDomiciliarios"></div>
-  </div>
+@media (min-width: 768px) {
+  .container {
+    max-width: 520px;
+    margin: 15px auto;
+    background: var(--panel-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  }
+}
 
-  <!-- MODAL PEDIDO -->
-  <div class="modal-overlay" id="modalPedido">
-    <div class="modal">
-      <h2>Confirmar Solicitud</h2>
-      <div class="input-group">
-        <label>👤 Nombre:</label>
-        <input type="text" id="clienteNombre" placeholder="Tu nombre">
-      </div>
-      <div class="input-group">
-        <label>📞 Teléfono / WhatsApp:</label>
-        <input type="tel" id="clienteTelefono" placeholder="Ej: 3180505095">
-      </div>
-      <button class="btn btn-whatsapp" id="btnEnviarWhatsApp" style="width: 100%; margin-top: 8px;">📲 Enviar por WhatsApp</button>
-      <button class="btn btn-secondary" style="width: 100%; margin-top: 6px;" onclick="cerrarModal('modalPedido')">Cancelar</button>
-    </div>
-  </div>
+/* ==========================================
+   SELECTOR DE SERVICIOS (TARJETAS MÓVILES)
+   ========================================== */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js"></script>
-</body>
-</html>
+.service-card {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.service-card.active {
+  background: rgba(0, 255, 136, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
+}
+
+.service-card span {
+  display: block;
+  font-size: 1.35rem;
+  margin-bottom: 2px;
+}
+
+.service-card h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.service-card-full {
+  grid-column: span 2;
+}
+
+/* ==========================================
+   INPUTS Y CAMPOS TÁCTILES
+   ========================================== */
+.input-group {
+  margin-bottom: 10px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-group input, 
+.input-group select, 
+.input-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(3, 7, 18, 0.9);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: var(--font-family);
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+}
+
+/* ==========================================
+   MAPA Y RESULTADOS
+   ========================================== */
+#map {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  margin: 10px 0;
+  border: 1px solid var(--panel-border);
+}
+
+.result-box {
+  background: rgba(3, 7, 18, 0.95);
+  border: 1px solid var(--panel-border-glow);
+  padding: 12px;
+  border-radius: 12px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.result-box h3 {
+  font-size: 1.05rem;
+  color: var(--primary);
+  margin: 4px 0 8px 0;
+}
+
+/* ==========================================
+   MODALES MÓVILES
+   ========================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(3, 7, 18, 0.85);
+  backdrop-filter: blur(8px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 12px;
+}
+
+.modal {
+  background: #0f172a;
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 360px;
+  padding: 16px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9);
+}
