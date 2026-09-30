@@ -1,14 +1,13 @@
 /* ==========================================
-   VARIABLES Y CONFIGURACIÓN BASE (MÓDULO MÓVIL PRO)
+   VARIABLES Y CONFIGURACIÓN BASE (MOBILE APP PRO)
    ========================================== */
 :root {
-  --bg-color: #030712;
-  --bg-gradient: radial-gradient(circle at 50% -20%, #111827 0%, #030712 70%, #000000 100%);
-  --panel-bg: rgba(17, 24, 39, 0.75);
-  --panel-border: rgba(255, 255, 255, 0.08);
-  --panel-border-glow: rgba(0, 255, 136, 0.3);
-  --text-main: #f9fafb;
-  --text-muted: #9ca3af;
+  --bg-dark: #020617;
+  --panel-bg: rgba(15, 23, 42, 0.85);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --panel-border-glow: rgba(0, 255, 136, 0.4);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
   --primary: #00ff88;
   --primary-hover: #00cc6a;
   --accent: #00e5ff;
@@ -26,11 +25,12 @@
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-color);
+  background-color: var(--bg-dark);
+  /* Fondo con gradiente profundo y destellos modernos estilo app nativa */
   background-image: 
-    var(--bg-gradient),
-    radial-gradient(rgba(0, 255, 136, 0.05) 1px, transparent 1px);
-  background-size: 100% 100%, 24px 24px;
+    radial-gradient(circle at 50% 0%, #1e1b4b 0%, #090d16 50%, #020617 100%),
+    radial-gradient(rgba(0, 255, 136, 0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 20px 20px;
   background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;
@@ -40,10 +40,10 @@ body {
 }
 
 /* ==========================================
-   HEADER MÓVIL OPTIMIZADO
+   HEADER MÓVIL
    ========================================== */
 header {
-  background: rgba(3, 7, 18, 0.85);
+  background: rgba(2, 6, 23, 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--panel-border);
@@ -54,16 +54,15 @@ header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
 }
 
 .brand h1 {
   font-size: 1.15rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 20%, var(--primary) 100%);
+  background: linear-gradient(135deg, #ffffff 30%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: -0.5px;
 }
 
 .brand p {
@@ -71,11 +70,10 @@ header {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  margin-top: 1px;
 }
 
 /* ==========================================
-   BOTONES Y CONTROLES TOUCH
+   BOTONES
    ========================================== */
 .auth-buttons button, .btn {
   background: linear-gradient(135deg, var(--primary) 0%, #00b359 100%);
@@ -85,17 +83,12 @@ header {
   border-radius: 8px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.25);
   font-size: 0.8rem;
 }
 
-.auth-buttons button:active, .btn:active {
-  transform: scale(0.96);
-}
-
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   color: var(--text-main) !important;
   border: 1px solid var(--panel-border) !important;
   box-shadow: none !important;
@@ -108,11 +101,11 @@ header {
 }
 
 /* ==========================================
-   CONTENEDOR PRINCIPAL TIPO APP MÓVIL
+   CONTENEDOR MÓVIL PRINCIPAL
    ========================================== */
 .container {
-  width: 100%;
-  max-width: 480px; /* Ancho perfecto simulando app móvil de alta gama */
+  width: 94%;
+  max-width: 460px;
   margin: 12px auto;
   background: var(--panel-bg);
   backdrop-filter: blur(25px);
@@ -120,40 +113,33 @@ header {
   border: 1px solid var(--panel-border);
   border-radius: 18px;
   padding: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-@media (min-width: 500px) {
-  .container {
-    margin: 20px auto;
-    padding: 20px;
-  }
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 /* ==========================================
-   SELECTOR DE SERVICIOS (CHIPS TÁCTILES)
+   SELECTOR DE SERVICIOS
    ========================================== */
 .services-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .service-card {
-  background: rgba(3, 7, 18, 0.6);
+  background: rgba(2, 6, 23, 0.6);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
   padding: 10px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .service-card.active {
-  background: rgba(0, 255, 136, 0.12);
+  background: rgba(0, 255, 136, 0.15);
   border-color: var(--primary);
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
 }
 
 .service-card span {
@@ -173,7 +159,7 @@ header {
 }
 
 /* ==========================================
-   INPUTS Y CAMPOS MÓVILES
+   INPUTS Y CAMPOS
    ========================================== */
 .input-group {
   margin-bottom: 12px;
@@ -186,7 +172,6 @@ header {
   color: var(--text-muted);
   margin-bottom: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .input-group input, 
@@ -194,7 +179,7 @@ header {
 .input-group textarea {
   width: 100%;
   padding: 10px 12px;
-  background: rgba(3, 7, 18, 0.8);
+  background: rgba(2, 6, 23, 0.85);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   color: var(--text-main);
@@ -205,7 +190,7 @@ header {
 .input-group input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.25);
 }
 
 /* ==========================================
@@ -213,14 +198,14 @@ header {
    ========================================== */
 #map {
   width: 100%;
-  height: 210px;
+  height: 200px;
   border-radius: 12px;
   margin: 12px 0;
   border: 1px solid var(--panel-border);
 }
 
 .result-box {
-  background: rgba(3, 7, 18, 0.85);
+  background: rgba(2, 6, 23, 0.9);
   border: 1px solid var(--panel-border-glow);
   padding: 14px;
   border-radius: 12px;
@@ -243,7 +228,7 @@ header {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(3, 7, 18, 0.85);
+  background: rgba(2, 6, 23, 0.85);
   backdrop-filter: blur(8px);
   display: none;
   justify-content: center;
@@ -253,11 +238,11 @@ header {
 }
 
 .modal {
-  background: #111827;
+  background: #0f172a;
   border: 1px solid var(--panel-border);
   border-radius: 16px;
   width: 100%;
   max-width: 380px;
   padding: 18px;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9);
-                    }
+}
