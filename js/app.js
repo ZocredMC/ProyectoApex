@@ -20,7 +20,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const markerOrigen = L.marker(TULUA_COORDS, { draggable: true }).addTo(map);
 markerOrigen.bindPopup("<b>📍 Tuluá (Base Central)</b>").openPopup();
 
-// Círculo visual de cobertura estricta de 100 km a la redonda
 const circuloCobertura = L.circle(TULUA_COORDS, {
   color: '#00e5ff',
   fillColor: '#00e5ff',
@@ -70,7 +69,7 @@ function actualizarCamposSegunServicio(servicio) {
     `;
   } else if (servicio === 'carrera') {
     lblOrigen.textContent = "📍 ¿Dónde se recoge al pasajero?:";
-    lblDestino.textContent = "🏁 ¿Hacia dónde se dirige el pasajero?:";
+    lblDestino.textContent = "🏁 ¿Hacia dónde se dirige?:";
   } else if (servicio === 'favor') {
     lblOrigen.textContent = "📍 ¿Dónde se compra o realiza el favor?:";
     lblDestino.textContent = "🏁 ¿A dónde se entrega?:";
@@ -106,7 +105,7 @@ window.abrirAuthModal = function(tipo) {
 
 
 // ==========================================
-// 4. MATRIZ REGIONAL Y CÁLCULO DE TARIFA ACCESIBLE
+// 4. MATRIZ REGIONAL Y CÁLCULO DE TARIFA
 // ==========================================
 
 const destinosRegionales = {
@@ -134,7 +133,7 @@ if (btnCalcular) {
     const origenVal = document.getElementById('origenInput').value.toLowerCase().trim();
     const destinoVal = document.getElementById('destinoInput').value.toLowerCase().trim();
     
-    let distanciaKm = 3.0; // Distancia urbana promedio
+    let distanciaKm = 3.0;
     let coordsDestino = [4.07, -76.20];
     let destinoEncontrado = false;
 
@@ -189,7 +188,7 @@ if (btnCalcular) {
     }
 
     // ==========================================
-    // CÁLCULO DE TARIFA ASEQUIBLE Y REAL
+    // CÁLCULO DE TARIFA SEGÚN TIPO DE SERVICIO
     // ==========================================
     let precioCalculado = 0;
 
@@ -197,22 +196,29 @@ if (btnCalcular) {
       const domicilioBase = 4000;
       const inputValorConsig = document.getElementById('valorConsignacionInput');
       const montoConsignar = inputValorConsig ? parseFloat(inputValorConsig.value) || 0 : 0;
-      const comisionBaja = 800 + (montoConsignar * 0.002); // Súper accesible
+      const comisionBaja = 800 + (montoConsignar * 0.002);
       precioCalculado = domicilioBase + comisionBaja;
       distanciaKm = 0;
+    } else if (servicioSeleccionado === 'carrera') {
+      // REQUISITO CARRERAS: Mínima $4.000, punto más retirado $5.000 - $6.000, directo sin esperas
+      const baseCarrera = 4000;
+      const adicionalDistancia = distanciaKm * 700;
+      precioCalculado = baseCarrera + adicionalDistancia;
+      
+      // Tope máximo lógico en zona urbana para carreras (entre $6,000 y $7,000)
+      if (precioCalculado > 6500) {
+        precioCalculado = 6500;
+      }
     } else if (servicioSeleccionado === 'intermunicipal') {
-      // Tarifa base regional ajustable según consumo/distancia vial
       const tarifaBaseInter = 15000;
-      const costoKmInter = 1000; // Estimado base por kilómetro en carretera
+      const costoKmInter = 1000;
       precioCalculado = tarifaBaseInter + (distanciaKm * costoKmInter);
     } else {
-      // Tarifa Urbana Escalonada (Comida, Paquetes, Favor, Carreras)
-      // Base $4.000 para trayectos cercanos, escalando hasta $8.000 - $9.000 de punta a punta en Tuluá
+      // Domicilios normales (Comida, Paquetes, Favor)
       const baseUrbana = 4000;
       const adicionalKm = distanciaKm * 900; 
       precioCalculado = baseUrbana + adicionalKm;
       
-      // Aplicar tope máximo razonable para la zona urbana de Tuluá (máximo $9,000 punta a punta)
       if (precioCalculado > 9000) {
         precioCalculado = 9000;
       }
