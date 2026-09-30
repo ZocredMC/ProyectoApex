@@ -256,7 +256,7 @@ window.abrirAuthModal = function(tipo) {
 };
 
 // ==========================================
-// 6. CÁLCULO DE RUTA Y TARIFA (VALIDADO)
+// 6. CÁLCULO DE RUTA Y TARIFA (VALIDADO Y SEGURO)
 // ==========================================
 const btnCalcular = document.getElementById('btnCalcular');
 const resultBox = document.getElementById('resultBox');
@@ -274,25 +274,16 @@ if (btnCalcular) {
     const montoConsignar = inputValorConsig ? parseFloat(inputValorConsig.value) || 0 : 0;
 
     let distanciaKm = 3.0;
-    let coordsOrigen = [...TULUA_COORDS];
-    let coordsDestino = [4.09, -76.21];
-    let destinoEncontrado = false;
+    let coordsOrigen = null;
+    let coordsDestino = null;
 
     const textoVerificacionDestino = servicioSeleccionado === 'consignacion' ? origenTexto : destinoTexto;
 
-    // Validación de Origen en el diccionario
-    let origenValido = false;
+    // Validación ESTRICTA de Origen (coincidencia exacta del nombre del barrio)
     const origenNorm = normalizarTexto(origenTexto);
-    for (let zona in directorioTulua) {
-      const zonaNorm = normalizarTexto(zona);
-      if (origenNorm === zonaNorm || zonaNorm.includes(origenNorm)) {
-        coordsOrigen = directorioTulua[zona];
-        origenValido = true;
-        break;
-      }
-    }
-
-    if (!origenValido && origenTexto !== "") {
+    if (directorioTulua[origenNorm]) {
+      coordsOrigen = directorioTulua[origenNorm];
+    } else {
       alert(`⚠️ El barrio o corregimiento de origen ("${origenTexto}") no está registrado en Tuluá.`);
       return;
     }
@@ -300,47 +291,31 @@ if (btnCalcular) {
     // Validación de Destino según servicio
     if (servicioSeleccionado === 'intermunicipal') {
       const destinoNorm = normalizarTexto(textoVerificacionDestino);
-      for (let key in destinosRegionales) {
-        const keyNorm = normalizarTexto(key);
-        if (destinoNorm === keyNorm || keyNorm.includes(destinoNorm)) {
-          distanciaKm = destinosRegionales[key].km;
-          coordsDestino = destinosRegionales[key].coords;
-          destinoEncontrado = true;
-          break;
-        }
-      }
-      if (!destinoEncontrado) {
+      if (destinosRegionales[destinoNorm]) {
+        distanciaKm = destinosRegionales[destinoNorm].km;
+        coordsDestino = destinosRegionales[destinoNorm].coords;
+      } else {
         alert(`⚠️ El municipio de destino no está en la cobertura regional permitida.`);
         return;
       }
     } else if (servicioSeleccionado === 'consignacion') {
       coordsDestino = coordsOrigen;
-      destinoEncontrado = true;
     } else {
-      let destinoValido = false;
       const destinoNorm = normalizarTexto(textoVerificacionDestino);
-      for (let zona in directorioTulua) {
-        const zonaNorm = normalizarTexto(zona);
-        if (destinoNorm === zonaNorm || zonaNorm.includes(destinoNorm)) {
-          coordsDestino = directorioTulua[zona];
-          destinoValido = true;
-          destinoEncontrado = true;
-          break;
-        }
-      }
-
-      if (!destinoValido && destinoTexto !== "") {
+      if (directorioTulua[destinoNorm]) {
+        coordsDestino = directorioTulua[destinoNorm];
+      } else {
         alert(`⚠️ El barrio o corregimiento de destino ("${destinoTexto}") no está registrado en Tuluá.`);
         return;
       }
     }
 
-    // Limpiar capa de ruta anterior
+    // Limpiar capa de ruta anterior en el mapa
     if (routeLayer) {
       map.removeLayer(routeLayer);
     }
 
-    // Trazar ruta OSRM con coordenadas limpias
+    // Trazar ruta OSRM con coordenadas limpias (Longitud, Latitud)
     try {
       const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`;
       const response = await fetch(urlOSRM);
@@ -401,9 +376,9 @@ if (btnCalcular) {
       resultBox.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Limpieza de inputs
-    if (inputOrigen) inputOrigen.value = '';
-    if (inputDestino) inputDestino.value = '';
-    if (inputValorConsig) inputValorConsig.value = '';
+    // Limpieza opcional de inputs si lo prefieres, o déjalos comentados si el usuario quiere ver lo que escribió:
+    // if (inputOrigen) inputOrigen.value = '';
+    // if (inputDestino) inputDestino.value = '';
+    // if (inputValorConsig) inputValorConsig.value = '';
   });
 }
