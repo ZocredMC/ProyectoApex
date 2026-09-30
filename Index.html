@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plataforma de Domicilios - Tuluá</title>
+  
+  <!-- Leaflet CSS para el mapa -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Nuestros estilos modernos de alta gama -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- HEADER DE ALTA GAMA -->
+  <header>
+    <div class="brand">
+      <h1 id="tituloAppLogo">⚡ Plataforma Tuluá</h1>
+      <p>Logística y Domicilios al Instante</p>
+    </div>
+    <div class="auth-buttons">
+      <div id="guestButtons">
+        <button class="btn btn-secondary" onclick="abrirAuthModal('login')">Ingresar</button>
+        <button class="btn" onclick="abrirAuthModal('register')">Registro</button>
+      </div>
+      <div id="userBadge" style="display: none;">
+        <span id="userNameTxt" style="font-weight: 600; font-size: 0.9rem;">👋 Hola</span> | 
+        <button id="btnMisPedidosCliente" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; margin: 0 5px;">📋 Mi Perfil y Pedidos</button> | 
+        <a href="#" id="btnCerrarSesion" style="color: #ff5555; text-decoration: none; font-size: 0.85rem; font-weight: 600;">Salir</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- PANEL CLIENTE (SOLICITUD DE SERVICIOS) -->
+  <div class="container" id="panelCliente">
+    <div style="margin-bottom: 20px;">
+      <label>✨ Selecciona el Tipo de Servicio:</label>
+      <select id="tipoServicioSelect" class="input-group select" style="margin-top: 5px; font-weight: 600; color: var(--primary);">
+        <option value="comida">🍔 1. Domicilio de Comida (Tarifa por distancia)</option>
+        <option value="paquete">📦 2. Domicilio de Paquete / Encomienda (Tarifa por distancia)</option>
+        <option value="consignacion">💳 3. Consignación / Vueltas Bancarias (Tarifa según valor a consignar)</option>
+        <option value="favor">🛒 4. El Favor / Mandados a la Medida (Tarifa según cantidad de ítems)</option>
+        <option value="intermunicipal">🚗 5. Envíos Intermunicipales / Rurales (Tarifa por rango extendido de km)</option>
+      </select>
+    </div>
+
+    <!-- CONTENEDOR DINÁMICO SEGÚN EL SERVICIO SELECCIONADO -->
+    <div id="seccionCamposDinamicos" style="background: rgba(3, 7, 18, 0.4); padding: 15px; border-radius: 12px; border: 1px solid var(--panel-border); margin-bottom: 18px;">
+      <div class="input-group">
+        <label id="lblOrigen">📍 Barrio u Origen (Recogida en Tuluá):</label>
+        <input type="text" id="origenInput" placeholder="Ej: Centro, San Luis, Salesiano">
+      </div>
+
+      <div class="input-group" id="grupoDestinoContainer">
+        <label id="lblDestino">🏁 Barrio u Destino (Entrega en Tuluá):</label>
+        <input type="text" id="destinoInput" placeholder="Ej: Progresar, Victoria, El Príncipe">
+      </div>
+
+      <!-- Campos especiales dinámicos que se activarán según el servicio -->
+      <div id="extrasServicioContainer" style="display: none; margin-top: 10px;">
+        <!-- Se inyecta dinámicamente si es Consignación (Monto) o Favor (Lista de compras) -->
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button class="btn" id="btnCalcular" style="flex: 1;">🔍 Calcular Tarifa Automática</button>
+      <button class="btn btn-secondary" id="btnCotizacionManual" style="flex: 1;">📍 Barrio Nuevo / Cotizar Manual</button>
+    </div>
+
+    <!-- MAPA INTERACTIVO -->
+    <div id="map"></div>
+
+    <div class="result-box" id="resultBox" style="display: none;">
+      <p style="font-size: 0.85rem; color: var(--text-muted);">Distancia estimada: <span id="distanciaTxt" style="color: #fff; font-weight: bold;">0</span> km</p>
+      <h3>Tarifa: <span id="precioTxtContainer">$<span id="precioTxt">0</span> COP</span></h3>
+      <button class="btn btn-whatsapp" id="btnHacerPedido" style="width: 100%; margin-top: 5px;">📦 Confirmar y Solicitar Servicio</button>
+    </div>
+  </div>
+
+  <!-- PANEL DOMICILIARIO -->
+  <div class="container" id="panelDomiciliario" style="display: none;">
+    <h2 style="margin-bottom: 15px; font-size: 1.2rem;">🛵 Panel de Domiciliarios</h2>
+    
+    <div style="background: rgba(3, 7, 18, 0.6); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Estado Actual: </span><br>
+        <strong id="txtEstadoServicio" style="color: var(--danger); font-size: 1rem;">Fuera de Servicio</strong>
+      </div>
+      <button id="btnToggleServicio" class="btn" style="padding: 8px 14px; font-size: 0.85rem;">🟢 Ponerme En Servicio</button>
+    </div>
+
+    <div style="background: rgba(3, 7, 18, 0.4); padding: 12px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--panel-border); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+      <div>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">CUADRE HOY</span>
+        <p style="font-size: 1.1rem; font-weight: bold; color: var(--primary);">$<span id="cuadreDiarioTxt">0</span></p>
+      </div>
+      <div>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">ENTREGAS HOY</span>
+        <p style="font-size: 1.1rem; font-weight: bold; color: var(--accent);"><span id="conteoEntregasTxt">0</span></p>
+      </div>
+    </div>
+
+    <h3 style="color: var(--warning); margin-bottom: 10px; font-size: 0.95rem; text-transform: uppercase;">🚨 Bolsa de Pedidos Pendientes</h3>
+    <div id="listaPedidosPendientes" style="margin-bottom: 20px;"><p style="color: var(--text-muted); font-size: 0.9rem;">Buscando pedidos...</p></div>
+
+    <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 0.95rem; text-transform: uppercase;">📦 Mis Pedidos Activos</h3>
+    <div id="listaPedidosActivos"><p style="color: var(--text-muted); font-size: 0.9rem;">Sin pedidos activos en este momento.</p></div>
+  </div>
+
+  <!-- PANEL ADMINISTRADOR -->
+  <div class="container" id="panelAdmin" style="display: none;">
+    <h2 style="margin-bottom: 15px; font-size: 1.2rem;">👑 Dashboard Administrador</h2>
+    <div style="background: rgba(3, 7, 18, 0.4); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--panel-border); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
+      <div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">VENTAS HOY</span>
+        <p style="font-size: 1rem; font-weight: bold; color: var(--primary);">$<span id="adminTotalVentas">0</span></p>
+      </div>
+      <div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">TOTAL PEDIDOS</span>
+        <p style="font-size: 1rem; font-weight: bold; color: var(--accent);"><span id="adminTotalPedidos">0</span></p>
+      </div>
+      <div>
+        <span style="font-size: 0.7rem; color: var(--text-muted);">COMPLETADOS</span>
+        <p style="font-size: 1rem; font-weight: bold; color: #fff;"><span id="adminTotalCompletados">0</span></p>
+      </div>
+    </div>
+
+    <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 0.95rem; text-transform: uppercase;">🟢 Estado de Domiciliarios en Tiempo Real</h3>
+    <div id="listaEstadoDomiciliarios" style="margin-bottom: 20px;"></div>
+
+    <h3 style="color: var(--accent); margin-bottom: 10px; font-size: 0.95rem; text-transform: uppercase;">📜 Histórico Detallado por Domiciliario</h3>
+    <div class="input-group">
+      <select id="selectFiltroDomiciliario" style="width: 100%; padding: 10px; background: rgba(3,7,18,0.6); color: #fff; border: 1px solid var(--panel-border); border-radius: 8px;">
+        <option value="">-- Seleccionar Domiciliario --</option>
+      </select>
+    </div>
+    <div id="contenedorHistoricoDomiciliario" style="margin-top: 10px;"></div>
+  </div>
+
+  <!-- MODAL PERFIL Y MIS PEDIDOS (CLIENTE) -->
+  <div class="modal-overlay" id="modalMisPedidos">
+    <div class="modal" style="max-width: 550px;">
+      <h2>📋 Mi Perfil y Mis Pedidos</h2>
+      <div style="background: rgba(3,7,18,0.5); padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid var(--panel-border);">
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Tus datos registrados:</p>
+        <p id="perfilInfoUser" style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;"></p>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">Historial y Trazabilidad de Servicios:</p>
+      <div id="contenedorMisPedidosList" style="max-height: 320px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
+        <p style="color: var(--text-muted);">Cargando historial...</p>
+      </div>
+      <button class="btn btn-secondary" style="width: 100%;" onclick="cerrarModal('modalMisPedidos')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL AUTENTICACIÓN -->
+  <div class="modal-overlay" id="modalAuth">
+    <div class="modal">
+      <h2 id="authModalTitle">Iniciar Sesión</h2>
+      
+      <div class="input-group" id="groupUsername" style="display:none;">
+        <label>👤 Nombre de Usuario (Único):</label>
+        <input type="text" id="authUsername" placeholder="Ej: cristian_01">
+      </div>
+
+      <div class="input-group" id="groupNombre" style="display:none;">
+        <label>📛 Nombre Completo:</label>
+        <input type="text" id="authNombre" placeholder="Tu nombre real">
+      </div>
+
+      <div class="input-group">
+        <label>📧 Correo Electrónico:</label>
+        <input type="email" id="authEmail" placeholder="correo@ejemplo.com">
+      </div>
+
+      <div class="input-group">
+        <label>🔒 Contraseña:</label>
+        <input type="password" id="authPassword" placeholder="******">
+      </div>
+
+      <div class="input-group" id="groupTelefono" style="display:none;">
+        <label>📞 Teléfono / WhatsApp:</label>
+        <input type="tel" id="authTelefono" placeholder="Ej: 3180505095">
+      </div>
+
+      <div class="input-group" id="groupDireccion" style="display:none;">
+        <label>🏠 Dirección Frecuente (Opcional):</label>
+        <input type="text" id="authDireccion" placeholder="Ej: Calle 32A # 12-04">
+      </div>
+
+      <button class="btn" id="btnAuthSubmit" style="width: 100%; margin-top: 5px;">Ingresar</button>
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="cerrarModal('modalAuth')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL PREGUNTA INVITADO -->
+  <div class="modal-overlay" id="modalPreguntaInvitado">
+    <div class="modal" style="text-align: center;">
+      <h2>¿Cómo quieres continuar?</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Regístrate para guardar tus direcciones y ver la trazabilidad exacta de tus servicios.</p>
+      <button class="btn" style="width: 100%; margin-bottom: 10px;" onclick="cerrarModal('modalPreguntaInvitado'); abrirAuthModal('register')">📝 Registrarme en 30 Segundos</button>
+      <button class="btn btn-secondary" style="width: 100%;" onclick="cerrarModal('modalPreguntaInvitado'); abrirModalPedido()">👤 Continuar como Invitado</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMACIÓN DE PEDIDO -->
+  <div class="modal-overlay" id="modalPedido">
+    <div class="modal">
+      <h2>Confirmar Solicitud</h2>
+      
+      <div class="input-group">
+        <label>👤 Tu Nombre:</label>
+        <input type="text" id="clienteNombre" placeholder="Tu nombre completo">
+      </div>
+
+      <div class="input-group">
+        <label>📞 Tu Teléfono / WhatsApp:</label>
+        <input type="tel" id="clienteTelefono" placeholder="Ej: 3180505095">
+      </div>
+
+      <hr style="border: 0.5px solid var(--panel-border); margin: 15px 0;">
+
+      <div class="input-group">
+        <label>📍 Origen / Establecimiento:</label>
+        <input type="text" id="barrioOrigenModal" readonly style="color: var(--text-muted); background: rgba(3,7,18,0.8);">
+      </div>
+
+      <div class="input-group">
+        <label>🏠 Dirección Exacta de Recogida:</label>
+        <input type="text" id="dirExactaOrigen" placeholder="Ej: Calle 26 # 11 - 05 local 2">
+      </div>
+
+      <div class="input-group">
+        <label>🏁 Destino / Entrega:</label>
+        <input type="text" id="barrioDestinoModal" readonly style="color: var(--text-muted); background: rgba(3,7,18,0.8);">
+      </div>
+
+      <div class="input-group">
+        <label>🏠 Dirección Exacta de Entrega:</label>
+        <input type="text" id="dirExactaDestino" placeholder="Ej: Transversal 12 # 20 - 15 Casa blanca">
+      </div>
+
+      <div class="input-group">
+        <label>📝 Observaciones / Instrucciones:</label>
+        <textarea id="observacionesInput" rows="2" placeholder="Ej: Traer cambio de $20.000, color de casa blanca..."></textarea>
+      </div>
+
+      <button class="btn btn-whatsapp" id="btnEnviarWhatsApp" style="width: 100%; margin-bottom: 8px;">📲 Enviar Servicio por WhatsApp</button>
+      <button class="btn btn-secondary" style="width: 100%;" onclick="cerrarModal('modalPedido')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Scripts externos -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Script principal como módulo -->
+  <script type="module" src="js/app.js"></script>
+</body>
+  </html>
+  
